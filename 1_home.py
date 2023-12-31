@@ -47,7 +47,7 @@ OBS: Esse projeto é para fins educacionais apenas, não visando lucro.
 - Parte 4: Regressão com Pycaret [Parte 4](link_youtube). 
 - Parte 5: Dashboards em Streamlit [Parte 5](link_youtube). 
 
-Abaixo, teremos uma breve __EDA__ e uma __regressão__ dos dados para estimar os preços de imóveis na região
+Abaixo, teremos uma breve __Análise Exploratória__  dos dados de imóveis na região
 """)
 
 imoveis_df = st.session_state['data']
