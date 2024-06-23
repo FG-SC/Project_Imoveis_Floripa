@@ -28,7 +28,7 @@ st.sidebar.markdown("Desenvolvido por [Felipe Gabriel](https://www.linkedin.com/
 st.markdown(""" # Projeto Imóveis Floripa
 
 Introdução: Esse projeto consiste em fazer do zero uma análise em Python do mercado imobiliário de Florianópolis, Santa Catarina.
-Os dados são públicos e foram coletados no dia 19/12/2023, portanto estão sujeitos a oscilações de preços estando a fonte deles abaixo.""")
+Os dados são públicos e foram coletados no dia 23/06/2024, portanto estão sujeitos a oscilações de preços estando a fonte deles abaixo.""")
 
 
 btn = st.button("Fontes de dados")
