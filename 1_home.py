@@ -28,18 +28,12 @@ st.sidebar.markdown("Desenvolvido por [Felipe Gabriel](https://www.linkedin.com/
 st.markdown(""" # Projeto Imóveis Floripa
 
 Introdução: Esse projeto consiste em fazer do zero uma análise em Python do mercado imobiliário de Florianópolis, Santa Catarina.
-Os dados são públicos e foram coletados no dia 23/06/2024, portanto estão sujeitos a oscilações de preços estando a fonte deles abaixo.""")
-
-
-btn = st.button("Fontes de dados")
-if btn:
-    webbrowser.open_new_tab("https://www.chavesnamao.com.br/")
-    #webbrowser.open_new_tab("https://www.zapimoveis.com.br/")
+Os dados são públicos e foram coletados no dia 23/06/2024 dos portais (chaves na mao)[https://www.chavesnamao.com.br/] e (zap imoveis)[https://www.zapimoveis.com.br/], portanto estão sujeitos a oscilações de preços.""")
 
 st.markdown("""
 OBS: Esse projeto é para fins educacionais apenas, não visando lucro.
             
-## Ele está dividido em 5 Partes
+## Ele está dividido em 5 Partes (ainda a serem gravadas)
             
 - Parte 1: Coleta dos dados do site Chaves na Mão [Parte 1](link_youtube). 
 - Parte 2: Coleta dos do Places API do Google Maps [Parte 2](link_youtube). 
