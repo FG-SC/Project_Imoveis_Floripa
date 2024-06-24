@@ -35,11 +35,11 @@ OBS: Esse projeto é para fins educacionais apenas, não visando lucro.
             
 ## Ele está dividido em 5 Partes (ainda a serem gravadas)
             
-- Parte 1: Coleta dos dados do site Chaves na Mão [Parte 1](link_youtube). 
-- Parte 2: Coleta dos do Places API do Google Maps [Parte 2](link_youtube). 
+- Parte 1: Coleta dos dados dos sites [Parte 1](link_youtube). 
+- Parte 2: Coleta de estabelecimentos no Places API do Google Maps [Parte 2](link_youtube). 
 - Parte 3: Data Cleaning + EDA [Parte 3](link_youtube). 
-- Parte 4: Regressão com Pycaret [Parte 4](link_youtube). 
-- Parte 5: Dashboards em Streamlit [Parte 5](link_youtube). 
+- Parte 4: Análise e Regressão de preços e aluguéis dos imóveis com Pycaret [Parte 4](link_youtube). 
+- Parte 5: Dashboards em Streamlit com estatísticas e ferramenta de buscas [Parte 5](link_youtube). 
 
 Abaixo, teremos uma breve __Análise Exploratória__  dos dados de imóveis na região
 """)
