@@ -13,7 +13,7 @@ para_alugar_df = st.session_state['data2']
 para_alugar_df = para_alugar_df[para_alugar_df['area']>0]
 
 df = para_alugar_df.copy().rename(columns={'tipo': 'type',
-                                       'aluguel_total': 'rent_price',
+                                       'preço': 'rent_price',
                                        'aluguel_previsto': 'forecast_rent',
                                        'arbitragem_no_aluguel': 'rent_arbitrage',
                                        'bairro': 'neighborhood'},
