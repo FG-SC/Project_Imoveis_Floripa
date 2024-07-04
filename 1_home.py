@@ -10,7 +10,7 @@ if 'data' not in st.session_state:
     st.session_state['data'] = imoveis_df
 
 if 'data2' not in st.session_state:
-    para_alugar_df = pd.read_csv('imoveis_para_aluguel_chaves_na_mao.csv', index_col=0)
+    para_alugar_df = pd.read_csv('imoveis_para_aluguel_chaves_e_zap.csv', index_col=0)
     st.session_state['data2'] = para_alugar_df
 
 if 'user' not in st.session_state:
