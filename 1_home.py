@@ -68,7 +68,7 @@ df['tipo'] = df['tipo'].replace({'flat': 'apartamento',
 })
 
 para_alugar_df = st.session_state['data2']
-df2 = para_alugar_df[['area', 'aluguel_total', 'tipo', 'bairro' ]].copy()
+df2 = para_alugar_df[['area', 'preço', 'tipo', 'bairro' ]].copy()
 
 cols_with_sum_10 = []
 for index in df2['tipo'].value_counts().index:
