@@ -97,9 +97,9 @@ mean_price_df = mean_price_df.sort_values('preço', ascending=False)
 fig2 = px.sunburst(mean_price_df, path=['tipo', 'bairro'], values='preço')
 
 fig3 = px.sunburst(df2, path=['tipo', 'bairro'])
-mean_price_df = df2.groupby(['tipo','bairro'])['aluguel_total'].median().reset_index()
-mean_price_df = mean_price_df.sort_values('aluguel_total', ascending=False)
-fig4 = px.sunburst(mean_price_df, path=['tipo', 'bairro'], values='aluguel_total')
+mean_price_df = df2.groupby(['tipo','bairro'])['preço'].median().reset_index()
+mean_price_df = mean_price_df.sort_values('preço', ascending=False)
+fig4 = px.sunburst(mean_price_df, path=['tipo', 'bairro'], values='preço')
 
 from plotly.subplots import make_subplots
 fig = make_subplots(rows=2, cols=2, specs=[[{"type": "sunburst"}, {"type": "sunburst"}],
