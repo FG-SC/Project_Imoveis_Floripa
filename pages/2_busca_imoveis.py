@@ -18,7 +18,7 @@ df = imoveis_df.copy().rename(columns={'tipo': 'type',
                                        'bairro': 'neighborhood'},
                                        )
 
-st.title("Busca imóveis - Alternative Maps")
+st.title("Busca imóveis")
 
 with st.form(key='my_form'):
     # First question: type of property
@@ -61,149 +61,84 @@ if submit_button:
         st.error("No properties match your criteria")
         st.stop()
     
-    st.write(f"Found {len(df)} properties")
-    
-    # Calculate quintiles for color scaling
+    # Calculate quintiles for color scaling (your original logic)
     quintis = (df['price'].describe([.2, .4, .6, .8]).loc[['20%', '40%', '60%', '80%']]\
             /df['price'].max()).reset_index(drop=True)
     
-    # Choose which map to display
-    map_choice = st.radio("Choose map type:", 
-                         ["Streamlit Native Map", "Folium Map", "Plotly Scatter", "PyDeck Map"])
+    # Create color mapping based on your original color scheme
+    def assign_color_category(price, df):
+        """Assign color category based on price quintiles"""
+        price_max = df['price'].max()
+        price_norm = price / price_max
+        
+        q20 = df['price'].quantile(0.2) / price_max
+        q40 = df['price'].quantile(0.4) / price_max
+        q60 = df['price'].quantile(0.6) / price_max
+        q80 = df['price'].quantile(0.8) / price_max
+        
+        if price_norm <= q20:
+            return '#102BE3'  # Blue (rgb(16, 26, 227))
+        elif price_norm <= q40:
+            return '#1F78B4'  # Light Blue (rgb(31, 120, 180))
+        elif price_norm <= q60:
+            return '#12DF11'  # Green (rgb(18, 223, 17))
+        elif price_norm <= q80:
+            return '#FFEA2C'  # Yellow (rgb(255, 234, 44))
+        else:
+            return '#E31A1C'  # Red (rgb(227, 26, 28))
     
-    # ====================
-    # OPTION 1: STREAMLIT NATIVE MAP (Most Reliable)
-    # ====================
-    if map_choice == "Streamlit Native Map":
-        st.subheader("Streamlit Native Map")
-        
-        # Prepare data for streamlit map
-        map_data = df[['lat', 'lon', 'price', 'area']].copy()
-        
-        # Add size column (normalized)
-        map_data['size'] = df['area'] / df['area'].max() * 100  # Scale to 0-100
-        
-        # Simple but effective native streamlit map
-        st.map(map_data[['lat', 'lon']], zoom=9)
-        
-        # Alternative with more control
-        st.subheader("Enhanced Native Map")
-        chart_data = df[['lat', 'lon', 'price']].copy()
-        chart_data.columns = ['latitude', 'longitude', 'price']  # streamlit expects these names
-        
-        st.map(chart_data, 
-               latitude='latitude',
-               longitude='longitude', 
-               size='price',
-               color='price')
+    # Prepare data for streamlit native map
+    map_data = df.copy()
     
-    # ====================
-    # OPTION 2: FOLIUM MAP (Very Popular & Reliable)
-    # ====================
-    elif map_choice == "Folium Map":
-        try:
-            import folium
-            from streamlit_folium import st_folium
-            
-            st.subheader("Folium Interactive Map")
-            
-            # Create base map
-            center_lat = df['lat'].mean()
-            center_lon = df['lon'].mean()
-            
-            m = folium.Map(location=[center_lat, center_lon], zoom_start=10)
-            
-            # Add markers with colors based on price
-            for idx, row in df.iterrows():
-                # Determine color based on price quintile
-                if row['price'] <= df['price'].quantile(0.2):
-                    color = 'blue'
-                elif row['price'] <= df['price'].quantile(0.4):
-                    color = 'lightblue'
-                elif row['price'] <= df['price'].quantile(0.6):
-                    color = 'green'
-                elif row['price'] <= df['price'].quantile(0.8):
-                    color = 'orange'
-                else:
-                    color = 'red'
-                
-                # Calculate radius based on area
-                radius = max(5, min(20, row['area'] / df['area'].max() * 20))
-                
-                folium.CircleMarker(
-                    location=[row['lat'], row['lon']],
-                    radius=radius,
-                    popup=f"Price: ${row['price']:,.0f}<br>Area: {row['area']:.0f}",
-                    color=color,
-                    fill=True,
-                    opacity=0.7
-                ).add_to(m)
-            
-            # Display the map
-            st_folium(m, width=800, height=500)
-            
-        except ImportError:
-            st.error("Folium not installed. Run: pip install folium streamlit-folium")
+    # Add color categories based on your original color scheme
+    map_data['color_category'] = map_data['price'].apply(lambda x: assign_color_category(x, df))
     
-    # ====================
-    # OPTION 3: PLOTLY SCATTER (No MapBox)
-    # ====================
-    elif map_choice == "Plotly Scatter":
-        st.subheader("Plotly Scatter Plot")
-        
-        # Create regular scatter plot
-        fig = px.scatter(df, x='lon', y='lat', 
-                        color='price',
-                        size='area',
-                        hover_data=['price', 'area'],
-                        color_continuous_scale='viridis',
-                        size_max=20)
-        
-        fig.update_layout(
-            title="Property Locations",
-            xaxis_title="Longitude",
-            yaxis_title="Latitude",
-            height=500,
-            width=800
-        )
-        
-        st.plotly_chart(fig)
+    # Normalize area for size (similar to your size_max=35)
+    map_data['size_normalized'] = (map_data['area'] / map_data['area'].max()) * 35
     
-    # ====================
-    # OPTION 4: PYDECK MAP (Streamlit's 3D solution)
-    # ====================
-    elif map_choice == "PyDeck Map":
-        st.subheader("PyDeck 3D Map")
-        
-        # Prepare data for pydeck
-        pydeck_data = df[['lat', 'lon', 'price', 'area']].copy()
-        
-        # Normalize price for color (0-255 range)
-        pydeck_data['price_norm'] = ((df['price'] - df['price'].min()) / 
-                                    (df['price'].max() - df['price'].min()) * 255).astype(int)
-        
-        # Normalize area for size
-        pydeck_data['area_norm'] = ((df['area'] - df['area'].min()) / 
-                                   (df['area'].max() - df['area'].min()) * 100 + 10).astype(int)
-        
-        st.pydeck_chart({
-            "map_style": "mapbox://styles/mapbox/light-v9",
-            "initial_view_state": {
-                "latitude": df['lat'].mean(),
-                "longitude": df['lon'].mean(),
-                "zoom": 10,
-                "pitch": 0,
-            },
-            "layers": [{
-                "type": "ScatterplotLayer",
-                "data": pydeck_data,
-                "get_position": ["lon", "lat"],
-                "get_color": [255, 255, "price_norm", 160],
-                "get_radius": "area_norm",
-                "radius_scale": 6,
-            }],
-        })
+    # Prepare data with proper column names for Streamlit
+    map_display = pd.DataFrame({
+        'latitude': map_data['lat'],
+        'longitude': map_data['lon'],
+        'price': map_data['price'],
+        'area': map_data['size_normalized'],  # Use normalized area for size
+        'color': map_data['color_category']   # Use color categories
+    })
     
-    # Show the data
-    st.subheader("Property Data")
-    st.write(df)
+    # Display the map with your styling
+    st.map(map_display, 
+           latitude='latitude',
+           longitude='longitude', 
+           size='area',
+           color='color')
+    
+    # Add a color legend
+    st.subheader("Price Color Legend")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        st.markdown(f"🔵 **Lowest 20%**: ${df['price'].quantile(0.0):,.0f} - ${df['price'].quantile(0.2):,.0f}")
+    with col2:
+        st.markdown(f"🔷 **20-40%**: ${df['price'].quantile(0.2):,.0f} - ${df['price'].quantile(0.4):,.0f}")
+    with col3:
+        st.markdown(f"🟢 **40-60%**: ${df['price'].quantile(0.4):,.0f} - ${df['price'].quantile(0.6):,.0f}")
+    with col4:
+        st.markdown(f"🟡 **60-80%**: ${df['price'].quantile(0.6):,.0f} - ${df['price'].quantile(0.8):,.0f}")
+    with col5:
+        st.markdown(f"🔴 **Top 20%**: ${df['price'].quantile(0.8):,.0f} - ${df['price'].max():,.0f}")
+    
+    # Display summary statistics
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Properties", len(df))
+    with col2:
+        st.metric("Average Price", f"${df['price'].mean():,.0f}")
+    with col3:
+        st.metric("Average Area", f"{df['area'].mean():.0f}")
+    
+    # Show the filtered data
+    st.subheader("Property Details")
+    display_df = df[['neighborhood', 'type', 'price', 'area', 'lat', 'lon']].copy()
+    display_df['price'] = display_df['price'].apply(lambda x: f"${x:,.0f}")
+    display_df['area'] = display_df['area'].apply(lambda x: f"{x:.0f}")
+    st.dataframe(display_df, use_container_width=True)
