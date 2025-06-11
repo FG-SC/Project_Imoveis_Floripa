@@ -65,67 +65,89 @@ if submit_button:
     quintis = (df['price'].describe([.2, .4, .6, .8]).loc[['20%', '40%', '60%', '80%']]\
             /df['price'].max()).reset_index(drop=True)
     
-    # Create color mapping based on your original color scheme
-    def assign_color_category(price, df):
-        """Assign color category based on price quintiles"""
-        price_max = df['price'].max()
-        price_norm = price / price_max
+    # Choose map type
+    map_type = st.radio("Choose map style:", ["Simple Streamlit Map", "Plotly Map with Original Colors"])
+    
+    if map_type == "Simple Streamlit Map":
+        # SIMPLE STREAMLIT MAP (guaranteed to work)
+        st.subheader("Property Locations")
         
-        q20 = df['price'].quantile(0.2) / price_max
-        q40 = df['price'].quantile(0.4) / price_max
-        q60 = df['price'].quantile(0.6) / price_max
-        q80 = df['price'].quantile(0.8) / price_max
+        # Prepare simple map data
+        simple_map_data = df[['lat', 'lon', 'price', 'area']].copy()
+        simple_map_data.columns = ['latitude', 'longitude', 'price', 'area']
+        simple_map_data = simple_map_data.reset_index(drop=True)
         
-        if price_norm <= q20:
-            return '#102BE3'  # Blue (rgb(16, 26, 227))
-        elif price_norm <= q40:
-            return '#1F78B4'  # Light Blue (rgb(31, 120, 180))
-        elif price_norm <= q60:
-            return '#12DF11'  # Green (rgb(18, 223, 17))
-        elif price_norm <= q80:
-            return '#FFEA2C'  # Yellow (rgb(255, 234, 44))
-        else:
-            return '#E31A1C'  # Red (rgb(227, 26, 28))
+        # Normalize area for better visualization
+        simple_map_data['area_normalized'] = (simple_map_data['area'] / simple_map_data['area'].max()) * 100
+        
+        st.map(simple_map_data, 
+               latitude='latitude',
+               longitude='longitude', 
+               size='area_normalized',
+               color='price')
     
-    # Prepare data for streamlit native map
-    map_data = df.copy()
+    else:
+        # PLOTLY MAP WITH YOUR ORIGINAL COLORS (but no mapbox)
+        st.subheader("Property Map with Original Color Scheme")
+        
+        # Create scatter plot that mimics a map
+        fig = px.scatter(df, x='lon', y='lat', 
+                        color='price',
+                        size='area',
+                        hover_data={'lat': ':.6f', 'lon': ':.6f', 'price': ':$,.0f', 'area': ':.0f'},
+                        size_max=35,
+                        opacity=0.7)
+        
+        # Apply your original color scheme
+        fig.update_coloraxes(colorscale = [
+            [0,    'rgb(16, 26, 227)'],      # Blue
+            [quintis[0], 'rgb(31, 120, 180)'],  # Light Blue
+            [quintis[1], 'rgb(18, 223, 17)'],   # Green
+            [quintis[2], 'rgb(255, 234, 44)'],  # Yellow
+            [quintis[3], 'rgb(255, 178, 53)'],  # Orange
+            [1,    'rgb(227, 26, 28)'],      # Red
+        ])
+        
+        # Style the plot to look more map-like
+        fig.update_layout(
+            height=500, 
+            width=800,
+            xaxis_title="Longitude",
+            yaxis_title="Latitude",
+            template="plotly_dark",
+            title="Properties by Location, Price, and Size",
+            # Make it look more like a map
+            xaxis=dict(
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='rgba(128,128,128,0.2)'
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='rgba(128,128,128,0.2)',
+                scaleanchor="x",  # Keep aspect ratio
+                scaleratio=1
+            )
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
     
-    # Add color categories based on your original color scheme
-    map_data['color_category'] = map_data['price'].apply(lambda x: assign_color_category(x, df))
-    
-    # Normalize area for size (similar to your size_max=35)
-    map_data['size_normalized'] = (map_data['area'] / map_data['area'].max()) * 35
-    
-    # Prepare data with proper column names for Streamlit
-    map_display = pd.DataFrame({
-        'latitude': map_data['lat'],
-        'longitude': map_data['lon'],
-        'price': map_data['price'],
-        'area': map_data['size_normalized'],  # Use normalized area for size
-        'color': map_data['color_category']   # Use color categories
-    })
-    
-    # Display the map with your styling
-    st.map(map_display, 
-           latitude='latitude',
-           longitude='longitude', 
-           size='area',
-           color='color')
-    
-    # Add a color legend
-    st.subheader("Price Color Legend")
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    with col1:
-        st.markdown(f"🔵 **Lowest 20%**: ${df['price'].quantile(0.0):,.0f} - ${df['price'].quantile(0.2):,.0f}")
-    with col2:
-        st.markdown(f"🔷 **20-40%**: ${df['price'].quantile(0.2):,.0f} - ${df['price'].quantile(0.4):,.0f}")
-    with col3:
-        st.markdown(f"🟢 **40-60%**: ${df['price'].quantile(0.4):,.0f} - ${df['price'].quantile(0.6):,.0f}")
-    with col4:
-        st.markdown(f"🟡 **60-80%**: ${df['price'].quantile(0.6):,.0f} - ${df['price'].quantile(0.8):,.0f}")
-    with col5:
-        st.markdown(f"🔴 **Top 20%**: ${df['price'].quantile(0.8):,.0f} - ${df['price'].max():,.0f}")
+    # Add a color legend for the original scheme
+    if map_type == "Plotly Map with Original Colors":
+        st.subheader("Price Color Legend")
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        with col1:
+            st.markdown(f"🔵 **Lowest 20%**: ${df['price'].quantile(0.0):,.0f} - ${df['price'].quantile(0.2):,.0f}")
+        with col2:
+            st.markdown(f"🔷 **20-40%**: ${df['price'].quantile(0.2):,.0f} - ${df['price'].quantile(0.4):,.0f}")
+        with col3:
+            st.markdown(f"🟢 **40-60%**: ${df['price'].quantile(0.4):,.0f} - ${df['price'].quantile(0.6):,.0f}")
+        with col4:
+            st.markdown(f"🟡 **60-80%**: ${df['price'].quantile(0.6):,.0f} - ${df['price'].quantile(0.8):,.0f}")
+        with col5:
+            st.markdown(f"🔴 **Top 20%**: ${df['price'].quantile(0.8):,.0f} - ${df['price'].max():,.0f}")
     
     # Display summary statistics
     col1, col2, col3 = st.columns(3)
