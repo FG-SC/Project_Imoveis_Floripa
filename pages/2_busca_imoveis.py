@@ -234,9 +234,9 @@ if submit_button:
             
         except Exception as e2:
             st.error(f"All map attempts failed: {e3}")
-                # Show raw data for debugging
-                st.write("**Raw coordinate data:**")
-                st.write(df[['lat', 'lon', 'price', 'area']].head(10))
+            # Show raw data for debugging
+            st.write("**Raw coordinate data:**")
+            st.write(df[['lat', 'lon', 'price', 'area']].head(10))
     
     # Show the data
     st.subheader("Properties Data")
