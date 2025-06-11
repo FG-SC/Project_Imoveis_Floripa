@@ -95,9 +95,29 @@ if submit_button:
     st.write(f"- Price range: {df['price'].min():,.0f} to {df['price'].max():,.0f}")
     st.write(f"- Area range: {df['area'].min():.1f} to {df['area'].max():.1f}")
     
+    # FIX THE SIZE SCALING ISSUE - Remove extreme area outliers
+    area_95th = df['area'].quantile(0.95)
+    area_outliers = df[df['area'] > area_95th]
+    
+    if len(area_outliers) > 0:
+        st.warning(f"Found {len(area_outliers)} properties with extremely large areas (>{area_95th:.0f} m²)")
+        st.write("Properties with extreme areas:")
+        st.write(area_outliers[['area', 'price', 'type', 'neighborhood']])
+        
+        # Filter out extreme outliers for better visualization
+        df_viz = df[df['area'] <= area_95th].copy()
+        st.success(f"Using {len(df_viz)} properties for visualization (removed {len(area_outliers)} outliers)")
+        st.write(f"- Visualization area range: {df_viz['area'].min():.1f} to {df_viz['area'].max():.1f}")
+    else:
+        df_viz = df.copy()
+    
+    if df_viz.empty:
+        st.error("No properties left after filtering outliers.")
+        st.stop()
+    
     # Calculate quintiles for color scale
     try:
-        quintis = (df['price'].describe([.2, .4, .6, .8]).loc[['20%', '40%', '60%', '80%']] / df['price'].max()).reset_index(drop=True)
+        quintis = (df_viz['price'].describe([.2, .4, .6, .8]).loc[['20%', '40%', '60%', '80%']] / df_viz['price'].max()).reset_index(drop=True)
         st.write(f"- Price quintiles: {quintis.tolist()}")
     except Exception as e:
         st.error(f"Error calculating quintiles: {e}")
@@ -130,28 +150,30 @@ if submit_button:
     try:
         # Add size scaling to make dots more visible
         # Scale area to a reasonable range for map markers
-        min_size = 8   # Minimum marker size
-        max_size = 50  # Maximum marker size
+        min_size = 10   # Minimum marker size
+        max_size = 40   # Maximum marker size
         
-        # Use a simpler color scale first to test
+        # Use the filtered dataset for visualization
         fig = px.scatter_mapbox(
-            df, 
+            df_viz, 
             lat='lat',
             lon='lon', 
             color='price',
             size='area',
             size_max=max_size,
-            zoom=12,  # Increased zoom even more for better visibility
-            opacity=0.9,  # Increased opacity for better visibility
+            zoom=11,  # Good zoom for Florianópolis
+            opacity=1.0,  # Maximum opacity for visibility
             hover_data=['type', 'neighborhood', 'price', 'area'],  # Add hover info
-            title=f"Real Estate Properties ({len(df)} properties)",
+            title=f"Real Estate Properties ({len(df_viz)} properties displayed, {len(df)} total)",
             color_continuous_scale="Viridis"  # Use a built-in scale first to test
         )
         
-        # Force minimum marker size (no line property for mapbox)
+        # Force minimum marker size and better visibility
         fig.update_traces(
             marker=dict(
-                sizemin=min_size  # Ensure minimum size
+                sizemin=min_size,  # Ensure minimum size
+                sizeref=2. * max(df_viz['area']) / (max_size ** 2),  # Better size scaling
+                sizemode='area'  # Use area mode for better scaling
             )
         )
         
@@ -170,8 +192,8 @@ if submit_button:
         )
         
         # Update layout with better centering
-        center_lat = df['lat'].mean()
-        center_lon = df['lon'].mean()
+        center_lat = df_viz['lat'].mean()
+        center_lon = df_viz['lon'].mean()
         
         fig.update_layout(
             height=600,  # Increased height
@@ -193,27 +215,33 @@ if submit_button:
         # Fallback: try without custom styling
         try:
             fig_simple = px.scatter_mapbox(
-                df, 
+                df_viz, 
                 lat='lat',
                 lon='lon', 
                 color='price',
                 size='area',
-                size_max=50, 
-                zoom=12,
-                opacity=0.9,
+                size_max=40, 
+                zoom=11,
+                opacity=1.0,
                 mapbox_style="open-street-map"  # Use OpenStreetMap (no token needed)
             )
             
-            # Add minimum size for fallback too
-            fig_simple.update_traces(marker=dict(sizemin=8))
+            # Add minimum size and better scaling for fallback too
+            fig_simple.update_traces(
+                marker=dict(
+                    sizemin=10,
+                    sizeref=2. * max(df_viz['area']) / (40 ** 2),
+                    sizemode='area'
+                )
+            )
             fig_simple.update_layout(height=600, width=1000)
             st.plotly_chart(fig_simple, use_container_width=True)
             
         except Exception as e2:
             st.error(f"Alternative map also failed: {e2}")
             st.write("**Data preview (first 5 rows):**")
-            st.write(df[['lat', 'lon', 'price', 'area', 'type', 'neighborhood']].head())
+            st.write(df_viz[['lat', 'lon', 'price', 'area', 'type', 'neighborhood']].head())
     
     # Show the filtered data
     st.subheader("Filtered Properties")
-    st.write(df)
+    st.write(df_viz)
