@@ -128,6 +128,11 @@ if submit_button:
     
     # Create the map with better defaults
     try:
+        # Add size scaling to make dots more visible
+        # Scale area to a reasonable range for map markers
+        min_size = 8   # Minimum marker size
+        max_size = 50  # Maximum marker size
+        
         # Use a simpler color scale first to test
         fig = px.scatter_mapbox(
             df, 
@@ -135,24 +140,34 @@ if submit_button:
             lon='lon', 
             color='price',
             size='area',
-            size_max=35, 
-            zoom=10,  # Increased zoom for better visibility
-            opacity=0.8,  # Increased opacity for better visibility
+            size_max=max_size,
+            zoom=12,  # Increased zoom even more for better visibility
+            opacity=0.9,  # Increased opacity for better visibility
             hover_data=['type', 'neighborhood', 'price', 'area'],  # Add hover info
-            title=f"Real Estate Properties ({len(df)} properties)"
+            title=f"Real Estate Properties ({len(df)} properties)",
+            color_continuous_scale="Viridis"  # Use a built-in scale first to test
         )
         
-        # Apply custom color scale
+        # Force minimum marker size
+        fig.update_traces(
+            marker=dict(
+                sizemin=min_size,  # Ensure minimum size
+                line=dict(width=1, color='white')  # Add white border for visibility
+            )
+        )
+        
+        # Apply custom color scale - fix the quintile issue
+        # Create a more evenly distributed color scale
         fig.update_coloraxes(
             colorscale=[
-                [0, 'rgb(16, 26, 227)'],           # Removed alpha, let opacity handle it
-                [quintis[0], 'rgb(31, 120, 180)'],
-                [quintis[1], 'rgb(18, 223, 17)'],
-                [quintis[2], 'rgb(255, 234, 44)'],
-                [quintis[3], 'rgb(255, 178, 53)'],
-                [1, 'rgb(227, 26, 28)'],
+                [0.0, 'rgb(0, 0, 255)'],      # Blue for lowest prices
+                [0.2, 'rgb(0, 128, 255)'],    # Light blue
+                [0.4, 'rgb(0, 255, 0)'],      # Green
+                [0.6, 'rgb(255, 255, 0)'],    # Yellow  
+                [0.8, 'rgb(255, 128, 0)'],    # Orange
+                [1.0, 'rgb(255, 0, 0)'],      # Red for highest prices
             ],
-            colorbar=dict(title="Price")  # Add colorbar title
+            colorbar=dict(title="Price (R$)")  # Add colorbar title
         )
         
         # Update layout with better centering
