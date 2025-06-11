@@ -148,11 +148,10 @@ if submit_button:
             color_continuous_scale="Viridis"  # Use a built-in scale first to test
         )
         
-        # Force minimum marker size
+        # Force minimum marker size (no line property for mapbox)
         fig.update_traces(
             marker=dict(
-                sizemin=min_size,  # Ensure minimum size
-                line=dict(width=1, color='white')  # Add white border for visibility
+                sizemin=min_size  # Ensure minimum size
             )
         )
         
@@ -199,12 +198,14 @@ if submit_button:
                 lon='lon', 
                 color='price',
                 size='area',
-                size_max=35, 
-                zoom=10,
-                opacity=0.8,
+                size_max=50, 
+                zoom=12,
+                opacity=0.9,
                 mapbox_style="open-street-map"  # Use OpenStreetMap (no token needed)
             )
             
+            # Add minimum size for fallback too
+            fig_simple.update_traces(marker=dict(sizemin=8))
             fig_simple.update_layout(height=600, width=1000)
             st.plotly_chart(fig_simple, use_container_width=True)
             
