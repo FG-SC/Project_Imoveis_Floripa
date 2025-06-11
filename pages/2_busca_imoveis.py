@@ -48,6 +48,10 @@ with st.form(key='my_form'):
     selected_min_area = st.number_input('Select minimum area', min_value=min_area, max_value=max_area, value=min_area)
     selected_max_area = st.number_input('Select maximum area', min_value=selected_min_area, max_value=max_area, value=max_area)
     
+    # Map style choice (inside form to avoid resets)
+    map_style = st.radio("Choose map style:", 
+                        ["Basic Map (Simple)", "Detailed Map (Your Original Colors)"])
+    
     submit_button = st.form_submit_button(label='Submit')
 
 if submit_button:
@@ -61,42 +65,53 @@ if submit_button:
         st.error("No properties match your criteria")
         st.stop()
     
-    # Calculate quintiles for color scaling (your original logic)
-    quintis = (df['price'].describe([.2, .4, .6, .8]).loc[['20%', '40%', '60%', '80%']]\
-            /df['price'].max()).reset_index(drop=True)
+    st.write(f"Found {len(df)} properties")
     
-    # Choose map type
-    map_type = st.radio("Choose map style:", ["Simple Streamlit Map", "Plotly Map with Original Colors"])
-    
-    if map_type == "Simple Streamlit Map":
-        # SIMPLE STREAMLIT MAP (guaranteed to work)
-        st.subheader("Property Locations")
+    if map_style == "Basic Map (Simple)":
+        # OPTION 1: SIMPLE STREAMLIT MAP (No color, just size)
+        st.subheader("🗺️ Property Locations")
         
-        # Prepare simple map data
-        simple_map_data = df[['lat', 'lon', 'price', 'area']].copy()
-        simple_map_data.columns = ['latitude', 'longitude', 'price', 'area']
+        # Prepare simple map data - NO COLOR PARAMETER
+        simple_map_data = df[['lat', 'lon', 'area']].copy()
+        simple_map_data.columns = ['latitude', 'longitude', 'area']
         simple_map_data = simple_map_data.reset_index(drop=True)
         
         # Normalize area for better visualization
-        simple_map_data['area_normalized'] = (simple_map_data['area'] / simple_map_data['area'].max()) * 100
+        simple_map_data['size'] = (simple_map_data['area'] / simple_map_data['area'].max()) * 50
         
+        # Basic map - just locations and sizes
         st.map(simple_map_data, 
                latitude='latitude',
                longitude='longitude', 
-               size='area_normalized',
-               color='price')
+               size='size')  # NO COLOR PARAMETER
+        
+        # Show price info in text
+        st.write(f"**Price range**: ${df['price'].min():,.0f} - ${df['price'].max():,.0f}")
+        st.write(f"**Area range**: {df['area'].min():.0f} - {df['area'].max():.0f}")
     
     else:
-        # PLOTLY MAP WITH YOUR ORIGINAL COLORS (but no mapbox)
-        st.subheader("Property Map with Original Color Scheme")
+        # OPTION 2: PLOTLY MAP WITH YOUR ORIGINAL COLORS
+        st.subheader("🌈 Property Map with Original Color Scheme")
+        
+        # Calculate quintiles for color scaling (your original logic)
+        quintis = (df['price'].describe([.2, .4, .6, .8]).loc[['20%', '40%', '60%', '80%']]\
+                /df['price'].max()).reset_index(drop=True)
         
         # Create scatter plot that mimics a map
         fig = px.scatter(df, x='lon', y='lat', 
                         color='price',
                         size='area',
-                        hover_data={'lat': ':.6f', 'lon': ':.6f', 'price': ':$,.0f', 'area': ':.0f'},
+                        hover_data={
+                            'lat': ':.6f', 
+                            'lon': ':.6f', 
+                            'price': ':$,.0f', 
+                            'area': ':.0f',
+                            'neighborhood': True,
+                            'type': True
+                        },
                         size_max=35,
-                        opacity=0.7)
+                        opacity=0.7,
+                        title="Properties by Location, Price, and Size")
         
         # Apply your original color scheme
         fig.update_coloraxes(colorscale = [
@@ -115,7 +130,6 @@ if submit_button:
             xaxis_title="Longitude",
             yaxis_title="Latitude",
             template="plotly_dark",
-            title="Properties by Location, Price, and Size",
             # Make it look more like a map
             xaxis=dict(
                 showgrid=True,
@@ -132,34 +146,36 @@ if submit_button:
         )
         
         st.plotly_chart(fig, use_container_width=True)
-    
-    # Add a color legend for the original scheme
-    if map_type == "Plotly Map with Original Colors":
-        st.subheader("Price Color Legend")
+        
+        # Add your color legend
+        st.subheader("💰 Price Color Legend")
         col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
-            st.markdown(f"🔵 **Lowest 20%**: ${df['price'].quantile(0.0):,.0f} - ${df['price'].quantile(0.2):,.0f}")
+            st.markdown(f"🔵 **Lowest 20%**<br>${df['price'].quantile(0.0):,.0f} - ${df['price'].quantile(0.2):,.0f}", unsafe_allow_html=True)
         with col2:
-            st.markdown(f"🔷 **20-40%**: ${df['price'].quantile(0.2):,.0f} - ${df['price'].quantile(0.4):,.0f}")
+            st.markdown(f"🔷 **20-40%**<br>${df['price'].quantile(0.2):,.0f} - ${df['price'].quantile(0.4):,.0f}", unsafe_allow_html=True)
         with col3:
-            st.markdown(f"🟢 **40-60%**: ${df['price'].quantile(0.4):,.0f} - ${df['price'].quantile(0.6):,.0f}")
+            st.markdown(f"🟢 **40-60%**<br>${df['price'].quantile(0.4):,.0f} - ${df['price'].quantile(0.6):,.0f}", unsafe_allow_html=True)
         with col4:
-            st.markdown(f"🟡 **60-80%**: ${df['price'].quantile(0.6):,.0f} - ${df['price'].quantile(0.8):,.0f}")
+            st.markdown(f"🟡 **60-80%**<br>${df['price'].quantile(0.6):,.0f} - ${df['price'].quantile(0.8):,.0f}", unsafe_allow_html=True)
         with col5:
-            st.markdown(f"🔴 **Top 20%**: ${df['price'].quantile(0.8):,.0f} - ${df['price'].max():,.0f}")
+            st.markdown(f"🔴 **Top 20%**<br>${df['price'].quantile(0.8):,.0f} - ${df['price'].max():,.0f}", unsafe_allow_html=True)
     
     # Display summary statistics
-    col1, col2, col3 = st.columns(3)
+    st.subheader("📊 Summary Statistics")
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Total Properties", len(df))
     with col2:
         st.metric("Average Price", f"${df['price'].mean():,.0f}")
     with col3:
         st.metric("Average Area", f"{df['area'].mean():.0f}")
+    with col4:
+        st.metric("Price Range", f"${df['price'].max() - df['price'].min():,.0f}")
     
     # Show the filtered data
-    st.subheader("Property Details")
+    st.subheader("📋 Property Details")
     display_df = df[['neighborhood', 'type', 'price', 'area', 'lat', 'lon']].copy()
     display_df['price'] = display_df['price'].apply(lambda x: f"${x:,.0f}")
     display_df['area'] = display_df['area'].apply(lambda x: f"{x:.0f}")
