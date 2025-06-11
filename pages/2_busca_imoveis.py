@@ -65,7 +65,7 @@ if submit_button:
                         size_max=35, 
                         zoom=9, 
                         opacity=0.3,
-                        mapbox_style="carto-darkmatter")  # This is the key change!
+                        mapbox_style="carto-positron")  # This is the key change!
     
     # Keep your exact same color scheme
     fig.update_coloraxes(colorscale = [
