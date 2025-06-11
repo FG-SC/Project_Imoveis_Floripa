@@ -1,6 +1,8 @@
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+import pandas as pd
+import numpy as np
 
 st.set_page_config(
     page_title='Selection',
@@ -16,7 +18,7 @@ df = imoveis_df.copy().rename(columns={'tipo': 'type',
                                        'bairro': 'neighborhood'},
                                        )
 
-st.title("Busca imóveis")
+st.title("Busca imóveis - DEBUG VERSION")
 
 with st.form(key='my_form'):
     # First question: type of property
@@ -52,37 +54,128 @@ if submit_button:
     # Filter DataFrame based on selected area range
     filtered_df = df_price[(df_price['area'] >= selected_min_area) & (df_price['area'] <= selected_max_area)]
     
+    st.header("🔍 DEBUGGING INFORMATION")
+    
+    # DEBUG 1: Check basic data
+    st.subheader("1. Data Overview")
+    st.write(f"**Total properties after filtering:** {len(filtered_df)}")
+    st.write(f"**Original dataset size:** {len(imoveis_df)}")
+    
+    if len(filtered_df) == 0:
+        st.error("❌ NO DATA AFTER FILTERING!")
+        st.stop()
+    
+    # DEBUG 2: Check coordinates
+    st.subheader("2. Coordinate Analysis")
+    missing_lat = filtered_df['lat'].isna().sum()
+    missing_lon = filtered_df['lon'].isna().sum()
+    
+    st.write(f"**Missing latitude values:** {missing_lat}")
+    st.write(f"**Missing longitude values:** {missing_lon}")
+    st.write(f"**Latitude range:** {filtered_df['lat'].min():.6f} to {filtered_df['lat'].max():.6f}")
+    st.write(f"**Longitude range:** {filtered_df['lon'].min():.6f} to {filtered_df['lon'].max():.6f}")
+    
+    # Check if coordinates are in valid range for Brazil
+    valid_lat = ((filtered_df['lat'] >= -35) & (filtered_df['lat'] <= 5)).sum()
+    valid_lon = ((filtered_df['lon'] >= -75) & (filtered_df['lon'] <= -30)).sum()
+    st.write(f"**Properties with valid Brazil coordinates:** Lat: {valid_lat}/{len(filtered_df)}, Lon: {valid_lon}/{len(filtered_df)}")
+    
+    # DEBUG 3: Check price and area data
+    st.subheader("3. Price and Area Analysis")
+    st.write(f"**Price range:** ${filtered_df['price'].min():,.0f} to ${filtered_df['price'].max():,.0f}")
+    st.write(f"**Area range:** {filtered_df['area'].min():.1f} to {filtered_df['area'].max():.1f}")
+    st.write(f"**Price data type:** {filtered_df['price'].dtype}")
+    st.write(f"**Area data type:** {filtered_df['area'].dtype}")
+    
+    # Clean the data
     df = filtered_df.copy()
+    df = df.dropna(subset=['lat', 'lon', 'price', 'area'])
     
-    # Calculate quintiles for color scaling
-    quintis = (df['price'].describe([.2, .4, .6, .8]).loc[['20%', '40%', '60%', '80%']]\
-            /df['price'].max()).reset_index(drop=True)
+    st.write(f"**Properties after removing NaN values:** {len(df)}")
     
-    # NO MAPBOX TOKEN NEEDED ANYMORE!
-    # Create the scatter mapbox plot with Open Street Map
-    fig = px.scatter_mapbox(df, lat='lat', lon='lon', color='price',
-                        size='area',
-                        size_max=35, 
-                        zoom=9, 
-                        opacity=0.3,
-                        mapbox_style="carto-positron")  # This is the key change!
+    if len(df) == 0:
+        st.error("❌ NO VALID DATA AFTER CLEANING!")
+        st.stop()
     
-    # Keep your exact same color scheme
-    fig.update_coloraxes(colorscale = [
-        [0,    'rgb(16, 26, 227, 0.5)'],
-        [quintis[0], 'rgb(31, 120, 180, 0.5)'],
-        [quintis[1], 'rgb(18, 223, 17, 0.5)'],
-        [quintis[2],  'rgb(255, 234, 44, 0.5)'],
-        [quintis[3], 'rgb(255, 178, 53, 0.5)'],
-        [1,    'rgb(227, 26, 28, 0.5)'],
-    ])
+    # DEBUG 4: Show sample data
+    st.subheader("4. Sample Data")
+    st.write(df[['lat', 'lon', 'price', 'area']].head())
     
-    # Keep your exact same layout
-    fig.update_layout(height=500, width=800, 
-                     mapbox=dict(center=go.layout.mapbox.Center(
-                         lat=df['lat'].mean(), 
-                         lon=df['lon'].mean())),
-                     template="plotly_dark")
+    # DEBUG 5: Test different map approaches
+    st.header("🗺️ MAP TESTING")
     
-    st.plotly_chart(fig)
+    # Test 1: Simple map without color/size
+    st.subheader("Test 1: Basic Scatter Map (No Color/Size)")
+    try:
+        fig_basic = px.scatter_mapbox(df, lat='lat', lon='lon',
+                                    zoom=9,
+                                    mapbox_style="open-street-map")
+        fig_basic.update_layout(height=400, width=600)
+        st.plotly_chart(fig_basic)
+        st.success("✅ Basic map works!")
+    except Exception as e:
+        st.error(f"❌ Basic map failed: {e}")
+    
+    # Test 2: Map with color only
+    st.subheader("Test 2: Map with Color Only")
+    try:
+        fig_color = px.scatter_mapbox(df, lat='lat', lon='lon', 
+                                    color='price',
+                                    zoom=9,
+                                    mapbox_style="open-street-map")
+        fig_color.update_layout(height=400, width=600)
+        st.plotly_chart(fig_color)
+        st.success("✅ Color map works!")
+    except Exception as e:
+        st.error(f"❌ Color map failed: {e}")
+    
+    # Test 3: Map with size only
+    st.subheader("Test 3: Map with Size Only")
+    try:
+        fig_size = px.scatter_mapbox(df, lat='lat', lon='lon', 
+                                   size='area',
+                                   zoom=9,
+                                   mapbox_style="open-street-map")
+        fig_size.update_layout(height=400, width=600)
+        st.plotly_chart(fig_size)
+        st.success("✅ Size map works!")
+    except Exception as e:
+        st.error(f"❌ Size map failed: {e}")
+    
+    # Test 4: Your original map with higher opacity
+    st.subheader("Test 4: Full Map (High Opacity)")
+    try:
+        quintis = (df['price'].describe([.2, .4, .6, .8]).loc[['20%', '40%', '60%', '80%']]\
+                /df['price'].max()).reset_index(drop=True)
+        
+        fig_full = px.scatter_mapbox(df, lat='lat', lon='lon', color='price',
+                            size='area',
+                            size_max=35, 
+                            zoom=9, 
+                            opacity=0.8,  # Higher opacity!
+                            mapbox_style="open-street-map")
+        
+        fig_full.update_coloraxes(colorscale = [
+            [0,    'rgb(16, 26, 227)'],  # Removed alpha
+            [quintis[0], 'rgb(31, 120, 180)'],
+            [quintis[1], 'rgb(18, 223, 17)'],
+            [quintis[2],  'rgb(255, 234, 44)'],
+            [quintis[3], 'rgb(255, 178, 53)'],
+            [1,    'rgb(227, 26, 28)'],
+        ])
+        
+        fig_full.update_layout(height=500, width=800, 
+                         mapbox=dict(center=go.layout.mapbox.Center(
+                             lat=df['lat'].mean(), 
+                             lon=df['lon'].mean())),
+                         template="plotly_dark")
+        
+        st.plotly_chart(fig_full)
+        st.success("✅ Full map works!")
+    except Exception as e:
+        st.error(f"❌ Full map failed: {e}")
+        st.write("Error details:", str(e))
+    
+    # Show final cleaned data
+    st.subheader("5. Final Cleaned Data")
     st.write(df)
