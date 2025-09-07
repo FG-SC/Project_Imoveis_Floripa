@@ -1,4 +1,4 @@
 pandas
 plotly
 regex
-sklearn
+scikit-learn
