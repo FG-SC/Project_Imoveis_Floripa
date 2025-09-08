@@ -152,12 +152,6 @@ def call_navigation_filters_api(level1, level2, level3=None):
         level3_clean = level3.strip('/').split('/')[-1]
         url += f"&level3={level3_clean}"
     
-    # Debug: Show the URL being called
-    if level3:
-        st.write(f"  🔗 Buscando bairros da zona: {level3.strip('/').split('/')[-1]}")
-    else:
-        st.write(f"  🔗 Verificando estrutura da cidade...")
-    
     try:
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
@@ -174,9 +168,6 @@ def call_navigation_filters_api(level1, level2, level3=None):
         if not data:
             st.write(f"  🔭 Nenhum item encontrado")
             return pd.DataFrame()
-        
-        # Debug: Show count of items returned
-        st.write(f"  📦 {len(data)} itens encontrados")
         
         df = pd.DataFrame(data)
         
@@ -263,10 +254,6 @@ def get_all_neighborhoods(state, city, property_type, transaction):
     Stage 2a: If zones exist, collect neighborhoods from each zone using navigationFilters API (with level3=zone)
     Stage 2b: If no zones, return direct neighborhoods from stage 1
     """
-    
-    # Stage 1: Initial call to detect city structure
-    st.info("🔍 Etapa 1: Verificando estrutura da cidade...")
-    
     level1 = f"{property_type}-{transaction}"
     level2 = f"{state.lower()}-{clean_portuguese_name(city)}"
     
@@ -277,25 +264,12 @@ def get_all_neighborhoods(state, city, property_type, transaction):
         st.error("❌ Nenhum dado retornado para a cidade especificada.")
         return pd.DataFrame()
     
-    # Debug: Show what we found
-    if 'category' in initial_df.columns:
-        categories = initial_df['category'].value_counts()
-        st.write(f"📋 Categorias encontradas: {dict(categories)}")
-        
-        # Show sample data for debugging
-        with st.expander("🔍 Debug: Dados da chamada inicial"):
-            display_cols = ['name', 'url', 'category', 'adsCount'] if all(col in initial_df.columns for col in ['name', 'url', 'category', 'adsCount']) else initial_df.columns.tolist()
-            st.dataframe(initial_df[display_cols].head(10))
-    
     # STEP 2: Check if city has zone-based structure
     has_zones = False
     if 'category' in initial_df.columns:
         has_zones = initial_df['category'].str.lower().str.contains('zona', na=False).any()
     
     if has_zones:
-        # IF: ZONE-BASED CITY - Two-stage process
-        st.success("🏙️ Cidade com estrutura de zonas detectada!")
-        st.info("🔄 Etapa A: Coletando bairros de cada zona")
         
         # Get all zones from initial call
         zones_df = initial_df[initial_df['category'].str.lower().str.contains('zona', na=False)].copy()
@@ -305,24 +279,18 @@ def get_all_neighborhoods(state, city, property_type, transaction):
             zones_with_ads = zones_df[zones_df['adsCount'] > 0]
             if not zones_with_ads.empty:
                 zones_df = zones_with_ads
-                st.write(f"🎯 Filtrando para {len(zones_df)} zonas com anúncios")
         
         if zones_df.empty:
             st.warning("⚠️ Nenhuma zona encontrada.")
             return pd.DataFrame()
-        
-        st.write(f"🗺️ Processando {len(zones_df)} zonas")
-        
+                
         # ETAPA A: Collect neighborhoods from each zone
         all_neighborhoods = []
         
         for idx, zone_row in zones_df.iterrows():
             zone_url = zone_row['url']
             zone_name = zone_row.get('name', zone_url)
-            zone_ads = zone_row.get('adsCount', 'N/A')
-            
-            st.write(f"📍 Zona: {zone_name} ({zone_ads} anúncios)")
-            
+                        
             # CRITICAL: Use the corrected function that calls navigationFilters with level3
             neighborhoods_df = get_neighborhoods_from_zone(state, city, property_type, transaction, zone_url)
             
@@ -332,7 +300,6 @@ def get_all_neighborhoods(state, city, property_type, transaction):
                     neighborhoods_filtered = neighborhoods_df[neighborhoods_df['adsCount'] > 0].copy()
                     if not neighborhoods_filtered.empty:
                         neighborhoods_df = neighborhoods_filtered
-                        st.write(f"  🎯 Filtrando para {len(neighborhoods_df)} bairros com anúncios")
                 
                 if not neighborhoods_df.empty:
                     # Add zone metadata
@@ -348,7 +315,7 @@ def get_all_neighborhoods(state, city, property_type, transaction):
                 st.write(f"  ❌ Nenhum bairro encontrado nesta zona")
             
             # Rate limiting
-            time.sleep(0.8)
+            time.sleep(0.64)
         
         # Combine all neighborhoods from all zones
         if all_neighborhoods:
@@ -366,10 +333,7 @@ def get_all_neighborhoods(state, city, property_type, transaction):
             st.error("❌ Nenhum bairro encontrado em qualquer zona.")
             return pd.DataFrame()
     
-    else:
-        # ELSE: DIRECT NEIGHBORHOOD CITY - One-stage process
-        st.success("🏘️ Cidade com bairros diretos detectada!")
-        
+    else:        
         # Filter for neighborhoods
         neighborhoods_df = initial_df.copy()
         
@@ -386,10 +350,7 @@ def get_all_neighborhoods(state, city, property_type, transaction):
             neighborhoods_with_ads = neighborhoods_df[neighborhoods_df['adsCount'] > 0].copy()
             if not neighborhoods_with_ads.empty:
                 neighborhoods_df = neighborhoods_with_ads
-                st.write(f"🎯 Filtrando para {len(neighborhoods_df)} bairros com anúncios")
         
-        if not neighborhoods_df.empty:
-            st.success(f"✅ {len(neighborhoods_df)} bairros encontrados")
         else:
             st.warning("⚠️ Nenhum bairro encontrado.")
         
@@ -627,8 +588,8 @@ def clean_data(df):
     outlier_cols = ['prices_rawPrice', 'area_useful', 'lat', 'lon']
     for col in outlier_cols:
         if col in df_cleaned.columns and not df_cleaned[col].empty:
-            q_low = df_cleaned[col].quantile(0.0001)
-            q_high = df_cleaned[col].quantile(0.9999)
+            q_low = df_cleaned[col].quantile(0.003)
+            q_high = df_cleaned[col].quantile(0.997)
             df_cleaned = df_cleaned[(df_cleaned[col] >= q_low) & (df_cleaned[col] <= q_high)]
         
     return df_cleaned
@@ -751,26 +712,6 @@ def safe_fillna_columns(df, columns, fill_value=0):
             df[col] = fill_value
     return df
 
-def build_url_with_filters(tipo_imovel, transacao, sigla_estado, cidade_slug, filtros_selecionados=None):
-    """
-    Constrói a URL final conforme especificações do prompt.
-    """
-    # URL base
-    url_base = f"https://www.chavesnamao.com.br/{tipo_imovel}-{transacao}/{sigla_estado}-{cidade_slug}"
-    
-    # Adicionar parâmetro de filtro se houver subtipos selecionados
-    if filtros_selecionados:
-        ids_filtros = []
-        for filtro in filtros_selecionados:
-            if filtro in FILTRO_TIPO_IMOVEL_ID:
-                ids_filtros.append(str(FILTRO_TIPO_IMOVEL_ID[filtro]))
-        
-        if ids_filtros:
-            filtro_param = '+'.join(ids_filtros)
-            url_base += f"/?filtro=tim:[{filtro_param}]"
-    
-    return url_base
-
 def initialize_session_state():
     """Inicializa todas as variáveis de session state necessárias."""
     if 'model' not in st.session_state:
@@ -884,16 +825,8 @@ def aba_coleta_treinamento():
             help="Número máximo de páginas a serem coletadas por bairro. Mais páginas = mais dados, mas coleta mais lenta."
         )
 
-    # Mostrar prévia da URL que será construída
-    url_construida = build_url_with_filters(
-        tipo_imovel, transacao, sigla_estado, cidade_slug, subtipos_selecionados
-    )
-    
-    with st.expander("🔗 Prévia da URL de Busca"):
-        st.code(url_construida)
-
     # Warning for high page numbers
-    if max_pages_per_neighborhood > 5:
+    if max_pages_per_neighborhood >= 5:
         st.warning("⚠️ Atenção: Coletar mais de 5 páginas por bairro pode levar muito tempo. A coleta pode demorar mais de 10 minutos dependendo da quantidade de bairros.")
 
     if st.button("🚀 Buscar Dados e Treinar Modelo", use_container_width=True):
@@ -906,12 +839,6 @@ def aba_coleta_treinamento():
                 transaction = transacao
                 
                 st.session_state.trained_region = f"{cidade_selecionada}, {estado_selecionado}"
-                st.info(f"🎯 Buscando dados para: {tipo_imovel_nome} para {transacao_nome.lower()} em {cidade_selecionada}/{estado_selecionado}")
-
-                # Mostrar URL construída
-                if subtipos_selecionados:
-                    st.info(f"🏠 Filtros aplicados: {', '.join(subtipos_selecionados)}")
-
                 # FIXED: Use the corrected neighborhood collection logic
                 neighborhood_df = get_all_neighborhoods(state, city, property_type, transaction)
                 
@@ -920,25 +847,18 @@ def aba_coleta_treinamento():
                     return
 
                 # Show preview of neighborhoods found
-                # ETAPA B: Collect ads from all neighborhoods using the correct API
-                st.subheader("🏠 Etapa B: Coletando Anúncios dos Bairros")
-                
+                # ETAPA B: Collect ads from all neighborhoods using the correct API                
                 # NOVA FUNCIONALIDADE: Converter subtipos selecionados para IDs
                 ids_selecionados = []
                 if subtipos_selecionados:
-                    ids_selecionados = [str(FILTRO_TIPO_IMOVEL_ID[nome]) for nome in subtipos_selecionados if nome in FILTRO_TIPO_IMOVEL_ID]
-                    st.info(f"🏠 Aplicando filtros de subtipos: {', '.join(subtipos_selecionados)} (IDs: {', '.join(ids_selecionados)})")
-                
+                    ids_selecionados = [str(FILTRO_TIPO_IMOVEL_ID[nome]) for nome in subtipos_selecionados if nome in FILTRO_TIPO_IMOVEL_ID]                
                 all_ads = []
                 progress_bar = st.progress(0)
                 total_neighborhoods = len(neighborhood_df)
 
-                st.info(f"Coletando até {max_pages_per_neighborhood} página(s) de {total_neighborhoods} bairros...")
-
                 # Track scraping statistics
                 successful_scrapes = 0
                 failed_scrapes = 0
-                total_ads_collected = 0
 
                 for i, row in enumerate(neighborhood_df.itertuples()):
                     neighborhood_url = row.url
@@ -961,12 +881,11 @@ def aba_coleta_treinamento():
                             ads_collected_this_neighborhood += len(ads_df)
                         
                         # Rate limiting
-                        time.sleep(0.7)
+                        time.sleep(0.55)
                     
                     # Update statistics
                     if ads_collected_this_neighborhood > 0:
                         successful_scrapes += 1
-                        total_ads_collected += ads_collected_this_neighborhood
                     else:
                         failed_scrapes += 1
                     
@@ -977,7 +896,6 @@ def aba_coleta_treinamento():
 
                 # Summary of scraping results
                 st.success(f"🎉 Coleta finalizada! {successful_scrapes} bairros com dados, {failed_scrapes} sem dados")
-                st.info(f"📊 Total coletado: {total_ads_collected} anúncios")
 
                 if not all_ads:
                     st.error("❌ Não foi possível coletar nenhum anúncio. Verifique a conectividade ou tente uma região diferente.")
@@ -1001,19 +919,11 @@ def aba_coleta_treinamento():
                     final_df.drop(columns=['cleaned_city_name'], inplace=True)
                     
                     filtered_count = len(final_df)
-                    removed_count = initial_count - filtered_count
                     
-                    if removed_count > 0:
-                        st.warning(f"🧹 Foram removidos {removed_count} anúncios de cidades vizinhas para garantir a precisão da análise.")
-                
                 # Handle deduplication safely
                 if 'id' in final_df.columns:
                     initial_count = len(final_df)
                     final_df = final_df.drop_duplicates(subset=['id'])
-                    duplicates_removed = initial_count - len(final_df)
-                    if duplicates_removed > 0:
-                        st.info(f"🔄 Removidas {duplicates_removed} duplicatas")
-                
 
                 # Preencher valores nulos com string vazia para o filtro funcionar
                 final_df['location.street.name'].fillna('', inplace=True)
